@@ -210,12 +210,30 @@ static std::thread::id kMainThreadId;
 unsigned long kLegacyThreadId;
 
 /// When no flagfile is provided via CLI, attempt to read flag 'defaults'.
-const std::string kBackupDefaultFlagfile{OSQUERY_HOME "/osquery.flags.default"};
+const std::string kBackupDefaultFlagfile{OSQUERY_HOME "osquery.flags.default"};
 
 const size_t kDatabaseMaxRetryCount{25};
 const size_t kDatabaseRetryDelay{200};
 std::function<void()> Initializer::shutdown_{nullptr};
 RecursiveMutex Initializer::shutdown_mutex_;
+
+namespace {
+
+void initWorkDirectories() {
+  if (!FLAGS_disable_database) {
+    auto const recursive = true;
+    auto const ignore_existence = true;
+    auto const status = createDirectory(
+        boost::filesystem::path(FLAGS_database_path).parent_path(),
+        recursive,
+        ignore_existence);
+    if (!status.ok()) {
+      LOG(ERROR) << "Could not initialize db directory " << status.what();
+    }
+  }
+}
+
+} // namespace
 
 static inline void printUsage(const std::string& binary, ToolType tool) {
   // Parse help options before gflags. Only display osquery-related options.
@@ -286,18 +304,6 @@ Initializer::Initializer(int& argc, char**& argv, ToolType tool)
     }
   }
 #endif
-
-  // Handled boost filesystem locale problems fixes in 1.56.
-  // See issue #1559 for the discussion and upstream boost patch.
-  try {
-    boost::filesystem::path::codecvt();
-  } catch (const std::runtime_error& /* e */) {
-#ifdef WIN32
-    setlocale(LC_ALL, "C");
-#else
-    setenv("LC_ALL", "C", 1);
-#endif
-  }
 
   Flag::create("logtostderr",
                {"Log messages to stderr in addition to the logger plugin(s)",
@@ -372,6 +378,9 @@ Initializer::Initializer(int& argc, char**& argv, ToolType tool)
   if (isShell()) {
     // Initialize the shell after setting modified defaults and parsing flags.
     initShell();
+  }
+  if (isDaemon()) {
+    initWorkDirectories();
   }
 
   std::signal(SIGABRT, signalHandler);

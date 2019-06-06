@@ -8,33 +8,29 @@
  *  You may select, at your option, one of the above-listed licenses.
  */
 
-// Sanity check integration test for os_version
-// Spec file: specs/os_version.table
+// Sanity check integration test for nt_info
+// Spec file: specs/windows/nt_info.table
 
 #include <osquery/tests/integration/tables/helper.h>
 
 namespace osquery {
 
-class OsVersion : public IntegrationTableTest {};
+class nt_info : public IntegrationTableTest {};
 
-TEST_F(OsVersion, test_sanity) {
-  QueryData data = execute_query("select * from os_version");
+TEST_F(NTdomains, test_sanity) {
+  QueryData data = execute_query("select * from nt_info");
 
   ASSERT_EQ(data.size(), 1ul);
 
   ValidatatioMap row_map = {
       {"name", NonEmptyString},
-      {"version", NonEmptyString},
-      {"major", NonNegativeInt},
-      {"minor", NonNegativeInt},
-      {"patch", NonNegativeInt},
-      {"build", NonEmptyString},
-      {"platform", NonEmptyString},
-      {"platform_like", NonEmptyString},
-      {"codename", NormalType},
-#ifdef OSQUERY_WINDOWS
-      {"installdate", NonEmptyString},
-#endif
+      {"client_site_name", NonEmptyString},
+      {"dc_site_name", NonEmptyString},
+      {"dns_forest_name", NonEmptyString},
+      {"domain_controller_address", NonEmptyString},
+      {"domain_controller_name", NonEmptyString},
+      {"domain_name", NonEmptyString},
+      {"status", NonEmptyString},
   };
   validate_rows(data, row_map);
 }
